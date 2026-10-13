@@ -4,7 +4,7 @@ Existing Sites project: appgprj_6accc0e773008191b79e921df70304aa.
 
 Public read-only dashboard; no PIN. Owner-only /admin uses dispatch-owned ChatGPT authentication. The verified khaled.salah@tcz-eg.com identity is bound to its Site-specific stable user ID at first authorized access. Every admin request independently checks both. No client header or cookie grants administration.
 
-Only TCZ - EGP (act_2308396932702831) is permitted. Query fields are a fixed allowlist. Campaign names must begin VIE or THE VIE followed by a delimiter. Native campaign discovery on 2026-10-12 found five matching campaigns, including VIE_META_KSA_LEADS_PROSPECT_202610; no campaign list or performance snapshot is shipped in source.
+Only TCZ - EGP (act_2308396932702831) is permitted. Query fields are a fixed allowlist. Campaign names must begin VIE or THE VIE followed by a delimiter. Native campaign discovery on 2026-10-12 found five matching campaigns, including VIE_META_KSA_LEADS_PROSPECT_202610. The user-authorized GitHub report snapshot is stored in data/metrics.json; no credentials or individual lead records are included.
 
 ## Live connection remains unverified
 
@@ -26,7 +26,13 @@ Local Sites mock identity is seedy@sites.test and must remain unauthorized. Neve
 
 ## Timestamped report publication
 
-A verified Supermetrics report can be supplied through the secret Sites runtime environment variable VERIFIED_REPORT_SNAPSHOT. No performance data is included in source or the build. The adapter validates TCZ - EGP, exact The Vie names, currency, dates, bounded nonnegative metrics, unique daily rows and campaign identity. Reports outside the snapshot's coverage display no figures. Client status and CSV explicitly identify the snapshot and say automatic refresh is not connected. This does not establish a continuous live connection. Configure and verify the API adapter to enable ongoing platform refresh.
+A verified Supermetrics report can be supplied through the secret Sites runtime environment variable VERIFIED_REPORT_SNAPSHOT or the GitHub file data/metrics.json. The adapter uses the newest valid snapshot that covers the requested period. It validates TCZ - EGP, exact The Vie names, currency, dates, bounded nonnegative metrics, unique daily rows and campaign identity. Reports outside coverage display no figures. Client status and CSV identify the figures as a timestamped snapshot. This does not establish a continuous API connection.
+
+## Scheduled GitHub updates and Hostinger
+
+The user requested a Codex automation every 12 hours to fetch and reconcile platform metrics and update data/metrics.json on main. A successful automation is a verified GitHub data update, not proof of hosting deployment. The report data is bundled at build time, so each update needs a successful build and deployment to appear on the hosted page. Configure automatic deployment from main after preparing a Hostinger-compatible application.
+
+The current application still targets Cloudflare Workers and D1 and relies on Sites-owned identity headers. It is not yet a directly deployable Hostinger Node.js application. Migration must replace the runtime bindings, durable storage and owner authentication; preserve the report validation and timestamped snapshot import. Uploading a ZIP once will not receive future GitHub changes.
 
 ## Self-service site editor
 
