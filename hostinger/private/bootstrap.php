@@ -1,0 +1,42 @@
+<?php
+declare(strict_types=1);
+ini_set('display_errors','0');
+const ACCOUNT = 'act_2308396932702831';
+function config(): array { $p=__DIR__.'/config.php'; return is_file($p)?require $p:[]; }
+function fail(string $message,int $status=400): never {http_response_code($status);header('Content-Type: application/json');echo json_encode(['error'=>$message]);exit;}
+function reply(array $data): never {header('Content-Type: application/json');header('Cache-Control: no-store');header('X-Content-Type-Options: nosniff');echo json_encode($data,JSON_THROW_ON_ERROR);exit;}
+function session_init(): void {$dir=__DIR__.'/sessions';if(!is_dir($dir)&&!mkdir($dir,0700,true))throw new RuntimeException('Session storage unavailable.');session_save_path($dir);ini_set('session.use_strict_mode','1');session_set_cookie_params(['httponly'=>true,'secure'=>!empty($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off','samesite'=>'Strict','path'=>'/']);session_start();}
+function owner(): void {if(empty($_SESSION['owner']))fail('Owner access required.',403);}
+function origin_guard(): void {$scheme=!empty($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off'?'https':'http';if(($_SERVER['HTTP_ORIGIN']??'')!==$scheme.'://'.($_SERVER['HTTP_HOST']??''))fail('Invalid request origin.',403);}
+function valid_date($s): bool {return is_string($s)&&preg_match('/^\d{4}-\d{2}-\d{2}$/D',$s)&&date('Y-m-d',strtotime($s))===$s;}
+function range_check($start,$end): void {if(!valid_date($start)||!valid_date($end)||$start>$end||(strtotime($end)-strtotime($start))/86400>366)throw new RuntimeException('Choose valid report dates.');}
+function validate_snapshot(array $s): void {
+ range_check($s['start']??null,$s['end']??null);if(($s['account']??'')!==ACCOUNT||($s['currency']??'')!=='EGP'||!strtotime($s['refreshedAt']??'')||!is_array($s['campaigns']??null)||count($s['campaigns'])>100||!is_array($s['rows']??null)||count($s['rows'])>20000)throw new RuntimeException('Invalid source report.');
+ $ids=[];foreach($s['campaigns'] as $c){if(!is_string($c['id']??null)||!preg_match('/^\d+$/D',$c['id'])||!preg_match('/^(?:THE[ _-]+)?VIE(?:[ _-]|$)/i',$c['name']??'')||!is_bool($c['lead']??null)||isset($ids[$c['id']]))throw new RuntimeException('Invalid campaign.');$ids[$c['id']]=true;}
+ $seen=[];foreach($s['rows'] as $r){if(!is_array($r)||count($r)!==6||!valid_date($r[0])||$r[0]<$s['start']||$r[0]>$s['end']||!isset($ids[$r[1]])||isset($seen[$r[0].':'.$r[1]]))throw new RuntimeException('Invalid daily row.');$seen[$r[0].':'.$r[1]]=true;for($i=2;$i<6;$i++)if((!is_int($r[$i])&&!is_float($r[$i]))||!is_finite((float)$r[$i])||$r[$i]<0||($i>2&&floor($r[$i])!=$r[$i]))throw new RuntimeException('Invalid metric.');}
+}
+function snapshot(): array {$s=json_decode(file_get_contents(__DIR__.'/metrics.json'),true,512,JSON_THROW_ON_ERROR);validate_snapshot($s);return $s;}
+function defaults(): array {return json_decode(file_get_contents(__DIR__.'/defaults.json'),true,512,JSON_THROW_ON_ERROR);}
+function empty_config(): array{return ['overrides'=>[],'hiddenMetrics'=>[],'hiddenCampaigns'=>[],'hiddenCharts'=>[],'labels'=>(object)[],'explanations'=>(object)[],'note'=>'','hideNote'=>false];}
+function state(array $all,string $scope,array $default): array {return $all[$scope]??['version'=>0,'draft'=>$default,'published'=>$default,'history'=>[]];}
+function change_state(string $scope,array $default,array $b,callable $validate): void {
+ $f=fopen(__DIR__.'/states.json','c+');if(!$f||!flock($f,LOCK_EX))throw new RuntimeException('Storage unavailable.');
+ try{$raw=stream_get_contents($f);$all=$raw?json_decode($raw,true,512,JSON_THROW_ON_ERROR):[];$s=state($all,$scope,$default);if(!is_int($b['version']??null)||$b['version']!==$s['version'])throw new RuntimeException('Another change was saved. Reload first.');$action=$b['action']??'';$c=$s['draft'];$publish=false;
+ if($action==='save')$c=$validate($b['config']??[]);elseif($action==='publish'){$c=$validate($c);$publish=true;}elseif($action==='reset')$c=$default;elseif($action==='restore'){$c['overrides']=[];$publish=true;}elseif($action==='rollback'){$found=false;foreach($s['history'] as $h)if($h['id']===($b['revision']??'')){$c=$h['config'];$found=true;}if(!$found)throw new RuntimeException('Revision not found.');}else throw new RuntimeException('Unknown action.');
+ $s['draft']=$c;if($publish)$s['published']=$c;$s['version']++;array_unshift($s['history'],['id'=>bin2hex(random_bytes(16)),'action'=>$action,'reason'=>$b['reason']??'Site presentation edit','author'=>'owner','timestamp'=>gmdate('c'),'config'=>$c]);$all[$scope]=$s;$json=json_encode($all,JSON_THROW_ON_ERROR);rewind($f);if(fwrite($f,$json)!==strlen($json))throw new RuntimeException('Could not save.');ftruncate($f,strlen($json));fflush($f);
+ }finally{flock($f,LOCK_UN);fclose($f);}
+}
+function all_states(): array {$f=fopen(__DIR__.'/states.json','c+');if(!$f||!flock($f,LOCK_SH))throw new RuntimeException('Storage unavailable.');try{$raw=stream_get_contents($f);return $raw?json_decode($raw,true,512,JSON_THROW_ON_ERROR):[];}finally{flock($f,LOCK_UN);fclose($f);}}
+function presentation(array $c): array {
+ $schema=defaults();$out=$schema['presentation'];foreach($schema['text'] as $k=>$meta){$v=$c['text'][$k]??null;if(!is_string($v)||!trim($v)||strlen($v)>640||preg_match('/budget|pacing|remaining\s+(spend|fund)/i',$v))throw new RuntimeException('Invalid text.');$out['text'][$k]=trim($v);}
+ foreach($schema['style'] as $k=>$meta){$v=$c['style'][$k]??null;if(!is_numeric($v)||$v<$meta[1]||$v>$meta[2])throw new RuntimeException('Invalid style.');$out['style'][$k]=$v;}
+ foreach($out['colors'] as $k=>$v){if(!preg_match('/^#[0-9a-f]{6}$/i',$c['colors'][$k]??''))throw new RuntimeException('Invalid colour.');$out['colors'][$k]=$c['colors'][$k];}
+ if(!in_array($c['font']??'', ['HelveticaNow','Arial','Georgia'],true))throw new RuntimeException('Invalid font.');$out['font']=$c['font'];$out['hiddenSections']=selection($c['hiddenSections']??null,['trend','mix','campaigns','notes']);return $out;
+}
+function selection($v,array $allowed): array {if(!is_array($v)||count($v)>count($allowed))throw new RuntimeException('Invalid selection.');foreach($v as $k)if(!in_array($k,$allowed,true))throw new RuntimeException('Invalid selection.');return array_values(array_unique($v));}
+function report_config(array $c,array $p,array $source): array {
+ $out=empty_config();$metrics=['spend','impressions','clicks','leads','ctr','cpc','cpl','blendedCpl'];$ids=array_column($source['campaigns'],'id');$out['hiddenMetrics']=selection($c['hiddenMetrics']??null,$metrics);$out['hiddenCampaigns']=selection($c['hiddenCampaigns']??null,$ids);$out['hiddenCharts']=selection($c['hiddenCharts']??null,['trend','mix']);
+ foreach(['labels'=>60,'explanations'=>300] as $field=>$max){$vals=[];foreach(($c[$field]??[]) as $k=>$v){if(!in_array($k,$metrics,true)||!is_string($v)||strlen($v)>$max*4||preg_match('/budget|pacing|remaining\s+(spend|fund)/i',$v))throw new RuntimeException('Invalid metric label.');$vals[$k]=trim($v);}$out[$field]=(object)$vals;}
+ if(!is_string($c['note']??null)||strlen($c['note'])>4000||preg_match('/budget|pacing|remaining\s+(spend|fund)/i',$c['note']))throw new RuntimeException('Invalid note.');$out['note']=$c['note'];$out['hideNote']=!empty($c['hideNote']);$out['overrides']=[];$seen=[];
+ if(!is_array($c['overrides']??null)||count($c['overrides'])>200)throw new RuntimeException('Invalid adjustments.');foreach($c['overrides'] as $o){$metric=$o['metric']??'';$id=$o['campaign']??'';$v=$o['replacement']??null;$reason=$o['reason']??'';$key=$id.':'.$metric;if(!in_array($metric,['spend','impressions','clicks','leads'],true)||!in_array($id,$ids,true)||!is_numeric($v)||!is_finite((float)$v)||$v<0||$v>1e12||($metric!=='spend'&&floor($v)!=$v)||!is_string($reason)||strlen(trim($reason))<3||strlen($reason)>1200||isset($seen[$key])||$p['start']<$source['start']||$p['end']>$source['end'])throw new RuntimeException('Invalid adjustment.');$seen[$key]=true;$i=array_search($metric,['spend','impressions','clicks','leads'],true)+2;$original=0;foreach($source['rows'] as $r)if($r[1]===$id&&$r[0]>=$p['start']&&$r[0]<=$p['end'])$original+=$r[$i];$out['overrides'][]=['id'=>bin2hex(random_bytes(16)),'account'=>ACCOUNT,'start'=>$p['start'],'end'=>$p['end'],'campaign'=>$id,'metric'=>$metric,'original'=>$original,'replacement'=>$v,'reason'=>$reason,'author'=>'owner','timestamp'=>gmdate('c'),'sourceRefreshedAt'=>$source['refreshedAt']];}return $out;
+}

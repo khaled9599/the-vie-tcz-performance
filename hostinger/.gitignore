@@ -1,0 +1,7 @@
+private/config.php
+private/credentials.json
+private/states.json
+private/login-attempts.json
+private/sessions/
+qa.php
+router.php

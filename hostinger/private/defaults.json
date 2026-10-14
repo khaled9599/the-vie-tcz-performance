@@ -1,0 +1,127 @@
+{
+  "presentation": {
+    "text": {
+      "title": "The Vie",
+      "subtitle": "A clear view of your campaign performance.",
+      "eyebrow": "THE CREATIVE ZONE / PERFORMANCE",
+      "clientLabel": "CLIENT REPORT",
+      "overview": "Overview",
+      "trends": "Trends",
+      "campaigns": "Campaigns",
+      "notes": "Report notes",
+      "trendTitle": "Spend & results",
+      "mixTitle": "Where spend goes",
+      "campaignTitle": "Campaign performance",
+      "notesTitle": "Clarity behind every number.",
+      "footer": "THOUGHTFULLY CREATED. CLEARLY REPORTED."
+    },
+    "style": {
+      "headingSize": 76,
+      "mobileHeadingSize": 62,
+      "letterSpacing": 1,
+      "contentWidth": 1500,
+      "cardRadius": 8,
+      "sectionGap": 22
+    },
+    "colors": {
+      "accent": "#FC4F00",
+      "ink": "#0F0F0F",
+      "paper": "#F4EFEF",
+      "card": "#FAF7F7"
+    },
+    "font": "HelveticaNow",
+    "hiddenSections": []
+  },
+  "text": {
+    "title": [
+      "Page title",
+      "The Vie"
+    ],
+    "subtitle": [
+      "Subtitle",
+      "A clear view of your campaign performance."
+    ],
+    "eyebrow": [
+      "Heading caption",
+      "THE CREATIVE ZONE / PERFORMANCE"
+    ],
+    "clientLabel": [
+      "Header label",
+      "CLIENT REPORT"
+    ],
+    "overview": [
+      "Overview tab",
+      "Overview"
+    ],
+    "trends": [
+      "Trends tab",
+      "Trends"
+    ],
+    "campaigns": [
+      "Campaigns tab",
+      "Campaigns"
+    ],
+    "notes": [
+      "Notes tab",
+      "Report notes"
+    ],
+    "trendTitle": [
+      "Trend heading",
+      "Spend & results"
+    ],
+    "mixTitle": [
+      "Campaign mix heading",
+      "Where spend goes"
+    ],
+    "campaignTitle": [
+      "Campaign table heading",
+      "Campaign performance"
+    ],
+    "notesTitle": [
+      "Report notes heading",
+      "Clarity behind every number."
+    ],
+    "footer": [
+      "Footer tagline",
+      "THOUGHTFULLY CREATED. CLEARLY REPORTED."
+    ]
+  },
+  "style": {
+    "headingSize": [
+      "Desktop heading size",
+      40,
+      110,
+      76
+    ],
+    "mobileHeadingSize": [
+      "Phone heading size",
+      32,
+      86,
+      62
+    ],
+    "letterSpacing": [
+      "Heading letter spacing added (pt)",
+      -2,
+      10,
+      1
+    ],
+    "contentWidth": [
+      "Maximum content width",
+      900,
+      1800,
+      1500
+    ],
+    "cardRadius": [
+      "Card corners",
+      0,
+      32,
+      8
+    ],
+    "sectionGap": [
+      "Section spacing",
+      12,
+      60,
+      22
+    ]
+  }
+}
